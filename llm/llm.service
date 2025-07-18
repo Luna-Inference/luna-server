@@ -1,0 +1,14 @@
+[Unit]
+Description=Luna LLM Service
+After=network.target
+
+[Service]
+Type=simple
+User=luna
+WorkingDirectory=/home/luna/luna-server/llm
+ExecStart=/home/luna/luna-server/llm/myenv/bin/python /home/luna/luna-server/llm/server.py
+Restart=always
+RestartSec=4
+
+[Install]
+WantedBy=multi-user.target
