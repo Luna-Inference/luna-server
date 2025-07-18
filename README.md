@@ -2,6 +2,7 @@
 A backend for luna device with LLM, TTS, STT, Status, RAG &amp; Display
 
 ## llm
+```
 sudo cp -r llm/llm.service /etc/systemd/system/llm.service
 
 sudo systemctl daemon-reload          # Reload systemd configurations
