@@ -672,10 +672,10 @@ def chat_completions():
     blocking_lock = threading.Lock()
     
     with blocking_lock:
-        if is_blocking:
+        if is_blocking or not global_state.finished:
             return openai_error_response(
-                "The model is currently busy. Please try again later.",
-                error_type="server_error",
+                "Model is running another process, wait for it to finish to start using",
+                error_type="server_busy",
                 status_code=503
             )
         is_blocking = True
@@ -870,10 +870,10 @@ def chat_completions():
 def completions():
     global global_text, global_state, is_blocking
 
-    if is_blocking or global_state == 0:
+    if is_blocking or not global_state.finished:
         return openai_error_response(
-            "The model is currently busy. Please try again later.",
-            error_type="server_error",
+            "Model is running another process, wait for it to finish to start using",
+            error_type="server_busy",
             status_code=503
         )
     

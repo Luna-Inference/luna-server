@@ -7,6 +7,17 @@ This document provides details about the API endpoints available in `server.py`.
 -   **Endpoint**: `/v1/chat/completions`
 -   **Method**: `POST`
 -   **Description**: Provides chat-based completions, similar to OpenAI's chat completion endpoint. It supports streaming responses and tool calls.
+
+    **Concurrency Note**: If the model is already generating a response (see `/health` endpoint `generation_status == "generating"`), this endpoint will immediately return a **`503`** error with message:
+    ```json
+    {
+        "error": {
+            "message": "Model is running another process, wait for it to finish to start using",
+            "type": "server_busy"
+        }
+    }
+    ```
+    This prevents multiple parallel generations that could crash the RKLLM backend.
 -   **Request Body (JSON)**:
     ```json
     {
@@ -52,6 +63,8 @@ This document provides details about the API endpoints available in `server.py`.
 -   **Endpoint**: `/v1/completions`
 -   **Method**: `POST`
 -   **Description**: Provides text completions, similar to OpenAI's legacy completion endpoint.
+
+    **Concurrency Note**: Behaves the same as the chat completions endpoint—requests made while another generation is active will receive a **`503`** response with the same `server_busy` error payload.
 -   **Request Body (JSON)**:
     ```json
     {
@@ -115,6 +128,8 @@ This document provides details about the API endpoints available in `server.py`.
 
 ## 5. Health Check (Performance Metrics)
 
+The `generation_status` field can be used by clients to detect whether the server is currently busy (`"generating"`) or idle. Clients should poll this endpoint before sending new generation requests to avoid the `503 server_busy` error.
+
 -   **Endpoint**: `/health`
 -   **Method**: `GET`
 -   **Description**: Returns server status **and last-run performance statistics** provided by the RKLLM runtime.
@@ -131,16 +146,17 @@ This document provides details about the API endpoints available in `server.py`.
     }
     ```
 
-## 6. Device Recognition
+## 6. Speed
 
-- **Endpoint**: `/luna`
+- **Endpoint**: `/speed`
 - **Method**: `GET`
-- **Description**: Used for device recognition among all devices on the network. Returns a simple JSON object indicating the device type.
+- **Description**: Returns the most recent prefill and generation speed in tokens per second.
 - **Request Body**: None
 - **Response (JSON)**:
     ```json
     {
-        "device": "luna"
+        "prefill_speed_tps": "405.85",
+        "generation_speed_tps": "27.07"
     }
     ```
 
