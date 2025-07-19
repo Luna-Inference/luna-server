@@ -1,0 +1,9 @@
+# /etc/systemd/system/luna-update.service
+[Unit]
+Description=Luna Server Auto-Update
+After=network.target
+
+[Service]
+Type=oneshot
+User=luna
+ExecStart=/home/luna/luna-server/scripts/auto-update.sh

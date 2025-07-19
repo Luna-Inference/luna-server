@@ -38,3 +38,43 @@ journalctl -u status.service -f       # Follow logs in real-time
 journalctl -u status.service --since today  # View today's logs only
 journalctl -u status.service --since "2024-01-01" --until "2024-01-02"  # Date range
 ```
+
+## updates
+
+
+```
+# Auto update
+sudo cp -r scripts/luna-update.service /etc/systemd/system/luna-update.service
+sudo cp -r scripts/luna-update.timer /etc/systemd/system/luna-update.timer
+
+sudo systemctl daemon-reload          # Reload systemd configurations
+sudo systemctl enable luna-update.timer   # Auto-start on boot
+sudo systemctl start luna-update.timer    # Start service now
+
+sudo systemctl stop luna-update.timer     # Stop the service
+sudo systemctl restart luna-update.timer  # Restart the service
+sudo systemctl disable luna-update.timer  # Remove from boot startup
+
+systemctl status luna-update.timer        # Current status and recent logs
+journalctl -u luna-update.timer          # View all logs for this service
+journalctl -u luna-update.timer -f       # Follow logs in real-time
+journalctl -u luna-update.timer --since today  # View today's logs only
+journalctl -u luna-update.timer --since "2024-01-01" --until "2024-01-02"  # Date range
+```
+```
+# Manual update
+./scripts/auto-update.sh
+```
+
+```
+# Monitor update logs
+
+# On any device, check update logs
+tail -f /var/log/luna-update.log
+
+# Check health logs
+tail -f /var/log/luna-health.log
+
+# Check service status
+systemctl status llm.service status.service
+```
