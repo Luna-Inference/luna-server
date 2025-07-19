@@ -993,6 +993,16 @@ def health():
         }
     return jsonify(response_data), 200
 
+# App version endpoint
+@app.route('/version', methods=['GET'])
+def get_version():
+    try:
+        with open('../VERSION', 'r') as f:
+            version = f.read().strip()
+        return jsonify({"version": version}), 200
+    except:
+        return jsonify({"version": "unknown"}), 200
+
 # WiFi connect endpoint
 @app.route('/wifi', methods=['POST'])
 def wifi_connect():

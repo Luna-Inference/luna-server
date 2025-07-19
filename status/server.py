@@ -18,5 +18,16 @@ def luna_recognition():
     """Device recognition endpoint"""
     return jsonify({"device": "luna"})
 
+# App version endpoint
+@app.route('/version', methods=['GET'])
+def get_version():
+    try:
+        with open('../VERSION', 'r') as f:
+            version = f.read().strip()
+        return jsonify({"version": version}), 200
+    except:
+        return jsonify({"version": "unknown"}), 200
+
+
 if __name__ == "__main__":
     app.run(host=SERVER_HOST, port=SERVER_PORT, debug=False)
