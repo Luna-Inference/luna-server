@@ -24,6 +24,7 @@ The server implements key OpenAI API endpoints:
 - `/v1/completions` - For text completions
 - `/v1/models` - List available models
 - `/health` - For server status checks
+- `/version` - Show running server version
 
 ## Using with OpenAI Client Libraries
 
@@ -173,6 +174,10 @@ print(completion.choices[0].message)
 ### Health Check
 - **GET /health**
   - Response: `{"status": "healthy"}`
+
+### Version
+- **GET /version**
+  - Response: `{"version": "0.0.2"}`
 
 ## Server Configuration
 
