@@ -5,6 +5,7 @@ from config import *
 import subprocess
 import re
 import os
+import time
 
 app = Flask(__name__)
 CORS(app, resources={
@@ -16,6 +17,9 @@ CORS(app, resources={
         "max_age": 3600
     }
 })
+
+# Track last time /luna endpoint was called
+last_luna_call = 0
 
 def get_cpu_usage():
     """Get current CPU usage percentage"""
@@ -116,7 +120,21 @@ def get_ram_usage():
 @app.route('/luna', methods=['GET'])
 def luna_recognition():
     """Device recognition endpoint"""
+    global last_luna_call
+    last_luna_call = time.time()
     return jsonify({"device": "luna"})
+
+@app.route('/luna/active', methods=['GET'])
+def luna_active():
+    """Check if /luna was called in the last 5 seconds"""
+    global last_luna_call
+    current_time = time.time()
+    is_active = (current_time - last_luna_call) <= 5
+    return jsonify({
+        "active": is_active,
+        "last_called": last_luna_call,
+        "seconds_since_last_call": current_time - last_luna_call
+    })
 
 @app.route('/version', methods=['GET'])
 def get_version():

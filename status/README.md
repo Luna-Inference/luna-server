@@ -61,6 +61,27 @@ curl http://localhost:1309/ram
 # Example response: {"ram_usage_percent": 18.21}
 ```
 
+### Luna Status
+```bash
+# Get device recognition
+curl http://localhost:1309/luna
+# Example response: {"device": "luna"}
+
+# Check if /luna was called in the last 5 seconds
+curl http://localhost:1309/luna/active
+# Example response: 
+# {
+#   "active": true,
+#   "last_called": 1626820000.123456,
+#   "seconds_since_last_call": 2.5
+# }
+#
+# The response includes:
+# - active: boolean indicating if /luna was called in the last 5 seconds
+# - last_called: timestamp of the last /luna call
+# - seconds_since_last_call: time elapsed since last /luna call
+```
+
 ### Notes
 - Replace `<server-ip>` and `<port>` with your server's IP address and port (default port is usually 5000 if not configured otherwise)
 - All endpoints return JSON responses
