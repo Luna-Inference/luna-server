@@ -161,6 +161,8 @@ python test_server.py
 
 This will test all endpoints and demonstrate the server's capabilities.
 
+
+
 ## Error Handling
 
 The server returns consistent error responses in JSON format:

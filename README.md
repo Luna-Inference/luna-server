@@ -1,6 +1,25 @@
 # luna-server
 A backend for luna device with LLM, TTS, STT, Status, RAG &amp; Display
 
+## rag
+```
+sudo cp -r rag/rag.service /etc/systemd/system/rag.service
+
+sudo systemctl daemon-reload          # Reload systemd configurations
+sudo systemctl enable rag.service   # Auto-start on boot
+sudo systemctl start rag.service    # Start service now
+
+sudo systemctl stop rag.service     # Stop the service
+sudo systemctl restart rag.service  # Restart the service
+sudo systemctl disable rag.service  # Remove from boot startup
+
+systemctl status rag.service        # Current status and recent logs
+journalctl -u rag.service          # View all logs for this service
+journalctl -u rag.service -f       # Follow logs in real-time
+journalctl -u rag.service --since today  # View today's logs only
+journalctl -u rag.service --since "2024-01-01" --until "2024-01-02"  # Date range
+```
+
 ## llm
 ```
 sudo cp -r llm/llm.service /etc/systemd/system/llm.service

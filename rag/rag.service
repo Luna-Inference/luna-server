@@ -1,0 +1,15 @@
+[Unit]
+Description=Luna RAG Service
+After=network.target
+
+[Service]
+Type=simple
+User=luna
+WorkingDirectory=/home/luna/luna-server/rag
+Environment=PATH=/home/luna/luna-server/rag/myenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/luna/luna-server/rag/myenv/bin/python /home/luna/luna-server/rag/server.py
+Restart=always
+RestartSec=4
+
+[Install]
+WantedBy=multi-user.target
