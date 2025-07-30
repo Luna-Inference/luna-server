@@ -16,7 +16,7 @@ API_KEY = "anything"  # Default API key for authentication (can be any string)
 
 # RAG Parameters
 DEFAULT_COLLECTION_NAME = "default"
-MAX_RESULTS = 10  # Default number of results to return for queries
+MAX_RESULTS = 5  # Default number of results to return for queries
 DEFAULT_DISTANCE_THRESHOLD = 1.0  # Maximum distance for similarity search
 
 # Debug Configuration

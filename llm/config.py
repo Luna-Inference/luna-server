@@ -4,8 +4,8 @@ This file centralizes all configurable parameters to make them easier to manage.
 """
 
 # Model Configuration
-SMALL_MODEL_PATH = "./model/luna-medium-1.2.0.rkllm"
-LARGE_MODEL_PATH = "./model/luna-medium-1.2.0.rkllm"
+SMALL_MODEL_PATH = "./model/Qwen3-0.6B-rk3588-w8a8-opt-0-hybrid-ratio-0.0.rkllm"
+LARGE_MODEL_PATH = "./model/Qwen3-0.6B-rk3588-w8a8-opt-0-hybrid-ratio-0.0.rkllm"
 TARGET_PLATFORM = "rk3588"
 
 # "../model/Gemma3-1B-w8a8-opt1.rkllm"
@@ -18,9 +18,9 @@ API_BASE_PATH = "/v1"
 API_KEY = "anything"  # Default API key for authentication (can be any string)
 
 # Model Parameters
-MAX_CONTEXT_LENGTH = 4000  # Must be less than model's max_context_limit of 4096
+MAX_CONTEXT_LENGTH = 16000  # Must be less than model's max_context_limit of 4096
 MAX_NEW_TOKENS = -1  # -1 means no limit
-N_KEEP = 3900  # Must be less than MAX_CONTEXT_LENGTH
+N_KEEP = 15999  # Must be less than MAX_CONTEXT_LENGTH
 CPU_CORE_COUNT = 4   # Number of CPU cores to use
 ENABLED_CPU_MASK = (1 << 4)|(1 << 5)|(1 << 6)|(1 << 7)
 USE_GPU = True

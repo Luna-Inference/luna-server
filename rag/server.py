@@ -8,6 +8,7 @@ import time
 import subprocess
 import signal
 import atexit
+import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
@@ -32,6 +33,117 @@ CORS(app, resources={
 chroma_client = None
 collections_cache = {}
 chroma_process = None
+
+def chunk_text(text: str, max_words: int = 400, overlap: int = 50) -> List[str]:
+    """
+    Split text into chunks of max_words or less, with optional overlap between chunks.
+    
+    Args:
+        text: The text to chunk
+        max_words: Maximum number of words per chunk
+        overlap: Number of words to overlap between consecutive chunks
+    
+    Returns:
+        List of text chunks
+    """
+    # Clean and normalize text
+    text = re.sub(r'\s+', ' ', text.strip())
+    
+    # Split into words
+    words = text.split()
+    
+    if len(words) <= max_words:
+        return [text]
+    
+    chunks = []
+    start = 0
+    
+    while start < len(words):
+        # Calculate end position for this chunk
+        end = min(start + max_words, len(words))
+        
+        # Extract chunk
+        chunk_words = words[start:end]
+        chunk_text = ' '.join(chunk_words)
+        
+        # Add chunk if it's not empty
+        if chunk_text.strip():
+            chunks.append(chunk_text)
+        
+        # Move start position for next chunk, accounting for overlap
+        start = end - overlap
+        
+        # If we're at the end, break
+        if start >= len(words):
+            break
+    
+    return chunks
+
+def add_document_with_chunking(content: str, collection_name: str, base_document_id: str = None) -> Dict:
+    """
+    Add a document to a collection with automatic chunking.
+    
+    Args:
+        content: The document content to add
+        collection_name: Name of the collection
+        base_document_id: Base ID for the document (chunks will be numbered)
+    
+    Returns:
+        Dictionary with status and chunk information
+    """
+    # Generate base document ID if not provided
+    if not base_document_id:
+        base_document_id = f"doc_{str(uuid.uuid4())}"
+    
+    # Get collection
+    collection = get_collection(collection_name)
+    if not collection:
+        return {"error": "Failed to get collection"}
+    
+    # Chunk the content
+    chunks = chunk_text(content, max_words=400, overlap=50)
+    
+    if not chunks:
+        return {"error": "No content to add after chunking"}
+    
+    # Prepare data for batch insertion
+    chunk_ids = []
+    chunk_contents = []
+    chunk_metadatas = []
+    
+    for i, chunk in enumerate(chunks):
+        chunk_id = f"{base_document_id}_chunk_{i+1:03d}"
+        chunk_ids.append(chunk_id)
+        chunk_contents.append(chunk)
+        
+        # Add metadata
+        metadata = {
+            "base_document_id": base_document_id,
+            "chunk_index": i + 1,
+            "total_chunks": len(chunks),
+            "word_count": len(chunk.split()),
+            "added_at": datetime.now().isoformat()
+        }
+        chunk_metadatas.append(metadata)
+    
+    try:
+        # Add all chunks to collection
+        collection.add(
+            ids=chunk_ids,
+            documents=chunk_contents,
+            metadatas=chunk_metadatas if ENABLE_METADATA else None
+        )
+        
+        return {
+            "status": "success",
+            "base_document_id": base_document_id,
+            "chunks_added": len(chunks),
+            "chunk_ids": chunk_ids,
+            "total_words": sum(len(chunk.split()) for chunk in chunks)
+        }
+        
+    except Exception as e:
+        return {"error": f"Failed to add document chunks: {str(e)}"}
 
 def openai_error_response(message, error_type="invalid_request_error", param=None, code=None, status_code=400):
     """Generate OpenAI-compatible error response"""
@@ -164,7 +276,51 @@ def validate_document_id(document_id: str) -> bool:
 
 @app.route('/add', methods=['POST'])
 def add_document():
-    """Add a document to a collection"""
+    """Add a document to a collection with automatic chunking"""
+    try:
+        data = request.json
+        if not data:
+            return openai_error_response("Missing JSON body")
+        
+        # Validate required fields
+        if 'content' not in data:
+            return openai_error_response("Missing required parameter: content", param="content")
+        
+        content = data['content']
+        if not isinstance(content, str) or not content.strip():
+            return openai_error_response("Content must be a non-empty string", param="content")
+        
+        collection_name = data.get('collection', DEFAULT_COLLECTION_NAME)
+        if not validate_collection_name(collection_name):
+            return openai_error_response("Invalid collection name", param="collection")
+        
+        # Generate base document ID if not provided
+        base_document_id = data.get('id', f"doc_{str(uuid.uuid4())}")
+        if not validate_document_id(base_document_id):
+            return openai_error_response("Invalid document ID", param="id")
+        
+        # Add document with automatic chunking
+        result = add_document_with_chunking(content, collection_name, base_document_id)
+        
+        if "error" in result:
+            return openai_error_response(result["error"], error_type="server_error", status_code=500)
+        
+        response = {
+            "status": "success",
+            "message": f"Document chunked and added successfully to collection '{collection_name}'",
+            "base_document_id": result["base_document_id"],
+            "chunks_added": result["chunks_added"],
+            "total_words": result["total_words"],
+            "collection": collection_name
+        }
+        return jsonify(response), 200
+            
+    except Exception as e:
+        return openai_error_response(f"Internal server error: {str(e)}", error_type="server_error", status_code=500)
+
+@app.route('/add_no_chunk', methods=['POST'])
+def add_document_no_chunk():
+    """Add a document to a collection without chunking (original behavior)"""
     try:
         data = request.json
         if not data:
@@ -192,7 +348,7 @@ def add_document():
         if not collection:
             return openai_error_response("Failed to get collection", error_type="server_error", status_code=500)
         
-        # Add document
+        # Add document without chunking
         try:
             collection.add(
                 ids=[document_id],
@@ -202,7 +358,7 @@ def add_document():
             
             response = {
                 "status": "success",
-                "message": f"Document added successfully to collection '{collection_name}'",
+                "message": f"Document added successfully to collection '{collection_name}' (no chunking)",
                 "document_id": document_id,
                 "collection": collection_name
             }
@@ -330,6 +486,71 @@ def remove_document():
             
         except Exception as e:
             return openai_error_response(f"Failed to remove document: {str(e)}", error_type="server_error", status_code=500)
+            
+    except Exception as e:
+        return openai_error_response(f"Internal server error: {str(e)}", error_type="server_error", status_code=500)
+
+@app.route('/remove_base_document', methods=['POST'])
+def remove_base_document():
+    """Remove all chunks of a base document from a collection"""
+    try:
+        data = request.json
+        if not data:
+            return openai_error_response("Missing JSON body")
+        
+        # Validate required fields
+        if 'base_document_id' not in data:
+            return openai_error_response("Missing required parameter: base_document_id", param="base_document_id")
+        
+        base_document_id = data['base_document_id']
+        if not validate_document_id(base_document_id):
+            return openai_error_response("Invalid base document ID", param="base_document_id")
+        
+        collection_name = data.get('collection', DEFAULT_COLLECTION_NAME)
+        if not validate_collection_name(collection_name):
+            return openai_error_response("Invalid collection name", param="collection")
+        
+        # Get collection
+        collection = get_collection(collection_name)
+        if not collection:
+            return openai_error_response("Failed to get collection", error_type="server_error", status_code=500)
+        
+        try:
+            # Get all documents to find chunks of this base document
+            all_docs = collection.get()
+            
+            # Find all chunk IDs for this base document
+            chunk_ids_to_remove = []
+            for i, doc_id in enumerate(all_docs['ids']):
+                if ENABLE_METADATA and all_docs['metadatas']:
+                    metadata = all_docs['metadatas'][i]
+                    if metadata and metadata.get('base_document_id') == base_document_id:
+                        chunk_ids_to_remove.append(doc_id)
+                elif doc_id == base_document_id:
+                    # If no metadata, check if it's the exact document ID
+                    chunk_ids_to_remove.append(doc_id)
+                elif doc_id.startswith(f"{base_document_id}_chunk_"):
+                    # Fallback: check if it's a chunk ID
+                    chunk_ids_to_remove.append(doc_id)
+            
+            if not chunk_ids_to_remove:
+                return openai_error_response(f"No chunks found for base document ID '{base_document_id}' in collection '{collection_name}'", 
+                                           error_type="not_found", status_code=404)
+            
+            # Remove all chunks
+            collection.delete(ids=chunk_ids_to_remove)
+            
+            response = {
+                "status": "success",
+                "message": f"Removed {len(chunk_ids_to_remove)} chunks for base document '{base_document_id}' from collection '{collection_name}'",
+                "base_document_id": base_document_id,
+                "chunks_removed": len(chunk_ids_to_remove),
+                "collection": collection_name
+            }
+            return jsonify(response), 200
+            
+        except Exception as e:
+            return openai_error_response(f"Failed to remove base document: {str(e)}", error_type="server_error", status_code=500)
             
     except Exception as e:
         return openai_error_response(f"Internal server error: {str(e)}", error_type="server_error", status_code=500)
@@ -525,10 +746,12 @@ if __name__ == "__main__":
     print("ChromaDB connection established successfully!")
     print("RAG server is starting...")
     print(f"API Endpoints:")
-    print(f"  POST /add - Add document to collection")
+    print(f"  POST /add - Add document to collection (with automatic 400-word chunking)")
+    print(f"  POST /add_no_chunk - Add document to collection without chunking")
     print(f"  GET  /show - List all collections")
     print(f"  POST /view - View documents in collection")
     print(f"  POST /remove - Remove document from collection")
+    print(f"  POST /remove_base_document - Remove all chunks for a base document")
     print(f"  POST /delete_collection - Delete collection and all documents")
     print(f"  POST /query - Query documents")
     print(f"  GET  /status - Server status")
