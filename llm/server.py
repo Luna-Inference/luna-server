@@ -31,6 +31,20 @@ def count_tokens(text: str) -> int:
     except Exception:
         # Fallback keeps the server functional even without tiktoken
         return len(text.split())
+
+def truncate_to_last_words(text: str, max_words: int = 4000) -> str:
+    """
+    Truncate text to the last max_words words if it exceeds the limit.
+    Preserves word boundaries and adds an ellipsis to indicate truncation.
+    """
+    words = text.split()
+    if len(words) <= max_words:
+        return text
+    
+    # Take the last max_words words
+    truncated_words = words[-max_words:]
+    print(f"Prompt truncated from {len(words)} words to {len(truncated_words)} words")
+    return "... " + " ".join(truncated_words)
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from jinja2 import Template
@@ -579,7 +593,9 @@ def format_messages_to_prompt(messages, tools=None):
             tool_call_id = message.get('tool_call_id', '')
             prompt_parts.append(f"Tool Result: {content}\n\nBased on this tool result, please provide a helpful response to the user. Do not make additional tool calls.")
     
-    return "\n".join(prompt_parts) + "\nAssistant:"
+    # Combine all parts and truncate if necessary
+    full_prompt = "\n".join(prompt_parts) + "\nAssistant:"
+    return truncate_to_last_words(full_prompt, 4000)
 
 def process_conversation_with_tools(messages, tools):
     """Process a conversation with a single tool call iteration"""
@@ -890,6 +906,9 @@ def completions():
         if not isinstance(prompt, str):
             return openai_error_response("Prompt must be a string", param="prompt")
         
+        # Truncate prompt to last 4000 words if it exceeds the limit
+        truncated_prompt = truncate_to_last_words(prompt, 4000)
+        
         # Get other parameters
         model = data.get('model', DEFAULT_MODEL_NAME)
         max_tokens = data.get('max_tokens')
@@ -906,7 +925,7 @@ def completions():
             completion_id = f"cmpl-{str(uuid.uuid4())}"
             created_timestamp = int(datetime.now().timestamp())
             
-            model_thread = threading.Thread(target=rkllm_model.run, args=(prompt,))
+            model_thread = threading.Thread(target=rkllm_model.run, args=(truncated_prompt,))
             model_thread.start()
             
             full_completion = ""
@@ -932,9 +951,9 @@ def completions():
                     "finish_reason": "stop"
                 }],
                 "usage": {
-                    "prompt_tokens": count_tokens(prompt),
+                    "prompt_tokens": count_tokens(truncated_prompt),
                     "completion_tokens": count_tokens(full_completion),
-                    "total_tokens": count_tokens(prompt) + count_tokens(full_completion)
+                    "total_tokens": count_tokens(truncated_prompt) + count_tokens(full_completion)
                 }
             }
             
