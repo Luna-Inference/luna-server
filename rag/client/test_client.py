@@ -44,6 +44,24 @@ def test_client_basic():
     else:
         print(f"❌ Collections check failed: {collections['error']}")
     
+    # Test delete collection (create a test collection first, then delete it)
+    print("4. Testing delete collection endpoint...")
+    test_collection = "test_delete_collection"
+    
+    # Add a document to create the collection
+    add_response = client.add_document("Test document for deletion", test_collection, "test_doc_1")
+    if "error" not in add_response:
+        print(f"   ✅ Created test collection '{test_collection}' with document")
+        
+        # Delete the collection
+        delete_response = client.delete_collection(test_collection)
+        if "error" not in delete_response:
+            print(f"   ✅ Successfully deleted collection '{test_collection}'")
+        else:
+            print(f"   ❌ Failed to delete collection: {delete_response['error']}")
+    else:
+        print(f"   ❌ Failed to create test collection: {add_response['error']}")
+    
     print("\n✅ Basic client tests completed!")
     return True
 

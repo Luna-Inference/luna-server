@@ -131,7 +131,39 @@ The RAG server provides a REST API for managing document collections and perform
     }
     ```
 
-## 5. Query Documents
+## 5. Delete Collection
+
+- **Endpoint**: `/delete_collection`
+- **Method**: `POST`
+- **Description**: Delete a collection and all its documents.
+
+- **Request Body (JSON)**:
+    ```json
+    {
+        "collection": "my_collection"  // Optional, defaults to "default"
+    }
+    ```
+
+- **Response (JSON)**:
+    ```json
+    {
+        "status": "success",
+        "message": "Collection 'my_collection' deleted successfully",
+        "collection": "my_collection"
+    }
+    ```
+
+- **Error Response (Collection not found)**:
+    ```json
+    {
+        "error": {
+            "message": "Collection 'my_collection' not found",
+            "type": "not_found"
+        }
+    }
+    ```
+
+## 6. Query Documents
 
 - **Endpoint**: `/query`
 - **Method**: `POST`
@@ -176,7 +208,7 @@ The RAG server provides a REST API for managing document collections and perform
 
 **Note**: The `distance` field indicates similarity - lower values mean more similar documents.
 
-## 6. Status
+## 7. Status
 
 - **Endpoint**: `/status`
 - **Method**: `GET`
@@ -198,7 +230,7 @@ The RAG server provides a REST API for managing document collections and perform
     }
     ```
 
-## 7. Health Check
+## 8. Health Check
 
 - **Endpoint**: `/health`
 - **Method**: `GET`
@@ -208,7 +240,7 @@ The RAG server provides a REST API for managing document collections and perform
 
 - **Response**: Same as `/status` endpoint.
 
-## 8. Version
+## 9. Version
 
 - **Endpoint**: `/version`
 - **Method**: `GET`
@@ -287,6 +319,15 @@ curl -X POST http://localhost:1310/query \
     "query": "What is machine learning?",
     "collection": "ml_docs",
     "n_results": 3
+  }'
+```
+
+### Deleting a collection:
+```bash
+curl -X POST http://localhost:1310/delete_collection \
+  -H "Content-Type: application/json" \
+  -d '{
+    "collection": "ml_docs"
   }'
 ```
 

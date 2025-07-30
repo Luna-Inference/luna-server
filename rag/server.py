@@ -334,6 +334,52 @@ def remove_document():
     except Exception as e:
         return openai_error_response(f"Internal server error: {str(e)}", error_type="server_error", status_code=500)
 
+@app.route('/delete_collection', methods=['POST'])
+def delete_collection():
+    """Delete a collection and all its documents"""
+    try:
+        data = request.json
+        if not data:
+            return openai_error_response("Missing JSON body")
+        
+        collection_name = data.get('collection', DEFAULT_COLLECTION_NAME)
+        if not validate_collection_name(collection_name):
+            return openai_error_response("Invalid collection name", param="collection")
+        
+        global chroma_client, collections_cache
+        
+        if not chroma_client:
+            return openai_error_response("ChromaDB client not initialized", error_type="server_error", status_code=500)
+        
+        try:
+            # Check if collection exists
+            collections = chroma_client.list_collections()
+            collection_names = [col.name for col in collections]
+            
+            if collection_name not in collection_names:
+                return openai_error_response(f"Collection '{collection_name}' not found", 
+                                           error_type="not_found", status_code=404)
+            
+            # Delete the collection
+            chroma_client.delete_collection(name=collection_name)
+            
+            # Remove from cache
+            if collection_name in collections_cache:
+                del collections_cache[collection_name]
+            
+            response = {
+                "status": "success",
+                "message": f"Collection '{collection_name}' deleted successfully",
+                "collection": collection_name
+            }
+            return jsonify(response), 200
+            
+        except Exception as e:
+            return openai_error_response(f"Failed to delete collection: {str(e)}", error_type="server_error", status_code=500)
+            
+    except Exception as e:
+        return openai_error_response(f"Internal server error: {str(e)}", error_type="server_error", status_code=500)
+
 @app.route('/query', methods=['POST'])
 def query_documents():
     """Query documents in a collection"""
@@ -483,6 +529,7 @@ if __name__ == "__main__":
     print(f"  GET  /show - List all collections")
     print(f"  POST /view - View documents in collection")
     print(f"  POST /remove - Remove document from collection")
+    print(f"  POST /delete_collection - Delete collection and all documents")
     print(f"  POST /query - Query documents")
     print(f"  GET  /status - Server status")
     print(f"  GET  /health - Health check")

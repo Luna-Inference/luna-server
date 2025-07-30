@@ -68,6 +68,12 @@ class RAGClient:
             "collection": collection
         })
     
+    def delete_collection(self, collection: str = "default") -> Dict:
+        """Delete a collection and all its documents"""
+        return self._make_request("POST", "/delete_collection", {
+            "collection": collection
+        })
+    
     def query_documents(self, query: str, collection: str = "default", n_results: int = 5) -> Dict:
         """Query documents in a collection"""
         return self._make_request("POST", "/query", {
@@ -133,13 +139,14 @@ class RAGClientCLI:
             print("4. View Collection")
             print("5. Query Documents")
             print("6. Remove Document")
-            print("7. Server Status")
-            print("8. Change Collection")
-            print("9. Run Demo")
+            print("7. Delete Collection")
+            print("8. Server Status")
+            print("9. Change Collection")
+            print("10. Run Demo")
             print("0. Exit")
             print()
             
-            choice = input("Enter your choice (0-9): ").strip()
+            choice = input("Enter your choice (0-10): ").strip()
             
             if choice == "0":
                 print("Goodbye!")
@@ -157,10 +164,12 @@ class RAGClientCLI:
             elif choice == "6":
                 self.remove_document_interactive()
             elif choice == "7":
-                self.server_status_interactive()
+                self.delete_collection_interactive()
             elif choice == "8":
-                self.change_collection_interactive()
+                self.server_status_interactive()
             elif choice == "9":
+                self.change_collection_interactive()
+            elif choice == "10":
                 self.run_demo()
             else:
                 print("Invalid choice. Please try again.")
@@ -233,6 +242,27 @@ class RAGClientCLI:
         
         response = self.client.remove_document(doc_id, collection)
         self.print_response(response, "Remove Document Result")
+    
+    def delete_collection_interactive(self):
+        """Interactive collection deletion"""
+        print("\n=== Delete Collection ===")
+        collection = input(f"Enter collection name to delete (default: {self.current_collection}): ").strip()
+        if not collection:
+            collection = self.current_collection
+        
+        # Confirmation prompt
+        confirm = input(f"Are you sure you want to delete collection '{collection}' and ALL its documents? (yes/no): ").strip().lower()
+        if confirm not in ['yes', 'y']:
+            print("Collection deletion cancelled")
+            return
+        
+        response = self.client.delete_collection(collection)
+        self.print_response(response, "Delete Collection Result")
+        
+        # Update current collection if it was deleted
+        if "error" not in response and collection == self.current_collection:
+            self.current_collection = "default"
+            print(f"Current collection changed to: {self.current_collection}")
     
     def server_status_interactive(self):
         """Interactive server status"""
@@ -342,8 +372,26 @@ class RAGClientCLI:
         if "error" not in response:
             print(f"   Remaining documents: {response.get('count', 0)}")
         
+        # Delete the demo collection
+        print(f"\n8. Deleting demo collection...")
+        response = self.client.delete_collection(demo_collection)
+        if "error" not in response:
+            print("   ✅ Demo collection deleted successfully")
+        else:
+            print(f"   ❌ Failed to delete collection: {response['error']}")
+        
+        # Verify collection deletion
+        print(f"\n9. Verifying collection deletion...")
+        response = self.client.show_collections()
+        if "error" not in response:
+            collections = response.get('collections', [])
+            if demo_collection not in collections:
+                print(f"   ✅ Collection '{demo_collection}' successfully removed")
+            else:
+                print(f"   ❌ Collection '{demo_collection}' still exists")
+        
         # Server info
-        print(f"\n8. Server information...")
+        print(f"\n10. Server information...")
         version = self.client.get_version()
         if "error" not in version:
             print(f"   Version: {version.get('version', 'unknown')}")
@@ -375,12 +423,17 @@ def main():
             collection = sys.argv[3] if len(sys.argv) > 3 else "default"
             response = client.query_documents(query, collection)
             print(json.dumps(response, indent=2))
+        elif command == "delete_collection" and len(sys.argv) >= 3:
+            collection = sys.argv[2]
+            response = client.delete_collection(collection)
+            print(json.dumps(response, indent=2))
         else:
             print("Usage:")
             print("  python rag_client.py status")
             print("  python rag_client.py demo")
             print("  python rag_client.py add 'content' [collection]")
             print("  python rag_client.py query 'query' [collection]")
+            print("  python rag_client.py delete_collection 'collection_name'")
     else:
         # Interactive mode
         cli = RAGClientCLI()
